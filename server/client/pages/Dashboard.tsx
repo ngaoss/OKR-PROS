@@ -88,6 +88,38 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
 
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h3 className="text-lg font-bold mb-6 flex items-center">
+          <span className="material-icons mr-2 text-purple-600">person</span>
+          Mục tiêu cá nhân của tôi
+        </h3>
+        <div className="space-y-4">
+          {filteredMyOkrs.length > 0 ? (
+            filteredMyOkrs.map((okr) => {
+              const progress = okr.keyResults.length > 0 ? Math.round(okr.keyResults.reduce((sum, kr) => sum + kr.progress, 0) / okr.keyResults.length) : 0;
+              return (
+                <div key={okr.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-slate-800">{okr.title}</h4>
+                    <p className="text-sm text-slate-500">{okr.keyResults.length} Key Results</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-slate-800">{progress}%</div>
+                    <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-500" style={{ width: `${progress}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center text-slate-400 py-8">
+              Chưa có mục tiêu cá nhân nào cho kỳ này
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="text-lg font-bold mb-6 flex items-center">
@@ -140,38 +172,11 @@ export const Dashboard: React.FC = () => {
             ))}
           </div>
           
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold mb-6 flex items-center">
-          <span className="material-icons mr-2 text-purple-600">person</span>
-          Mục tiêu cá nhân của tôi
-        </h3>
-        <div className="space-y-4">
-          {filteredMyOkrs.length > 0 ? (
-            filteredMyOkrs.map((okr) => {
-              const progress = okr.keyResults.length > 0 ? Math.round(okr.keyResults.reduce((sum, kr) => sum + kr.progress, 0) / okr.keyResults.length) : 0;
-              return (
-                <div key={okr.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-slate-800">{okr.title}</h4>
-                    <p className="text-sm text-slate-500">{okr.keyResults.length} Key Results</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-slate-800">{progress}%</div>
-                    <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-500" style={{ width: `${progress}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="text-center text-slate-400 py-8">
-              Chưa có mục tiêu cá nhân nào cho kỳ này
-            </div>
-          )}
+          <div className="mt-8 p-4 bg-indigo-50 rounded-xl">
+            <p className="text-xs text-indigo-700 leading-relaxed font-medium">
+              💡 <span className="font-bold">Gợi ý từ AI:</span> {filteredOkrs.length > 0 ? "Tiến độ đang được duy trì ổn định. Hãy ưu tiên các mục tiêu có tiến độ dưới 50%." : "Chưa có mục tiêu nào được thiết lập cho kỳ này."}
+            </p>
+          </div>
         </div>
       </div>
     </div>
