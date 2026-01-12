@@ -66,9 +66,11 @@ async function ensureDefaultAdmin() {
   }
 }
 
-mongoose.connect('mongodb+srv://dongvanict3_db_user:7yC5wXM1niXHGUmz@cluster0.vrlouhe.mongodb.net/')
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://dongvanict3_db_user:7yC5wXM1niXHGUmz@cluster0.vrlouhe.mongodb.net/';
+
+mongoose.connect(MONGO_URI)
   .then(() => {
-    console.log('✅ MongoDB Atlas connected');
+    console.log('✅ MongoDB Connected');
     ensureDefaultAdmin();
   })
   .catch(err => console.error('❌ MongoDB connection error:', err))

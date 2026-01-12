@@ -1,6 +1,5 @@
 import { Objective, Task, User } from '../types';
 import { apiRequest } from './apiClient';
-import * as myOkrService from './myOkrService';
 
 const STORAGE_KEYS = {
   OKRS: 'okr_pro_data_okrs',
@@ -213,10 +212,6 @@ export const dataService = {
   updateTaskStatus: async (id: string, status: 'TODO' | 'IN_PROGRESS' | 'DONE') => {
     try {
       const res = await apiRequest(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
-      // Sync OKR progress after task status update
-      if (res && res.krId) {
-        await dataService.syncOKRProgress(res.krId);
-      }
       return normalizeId(res);
     } catch (err: any) {
       if (err.status === 401 || err.status === 403) throw err;
@@ -226,7 +221,7 @@ export const dataService = {
       if (index !== -1) {
         tasks[index].status = status;
         localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-        await dataService.syncOKRProgress(tasks[index].krId);
+        dataService.syncOKRProgress(tasks[index].krId);
         return tasks[index];
       }
       return null;
@@ -253,34 +248,15 @@ export const dataService = {
   },
 
   deleteTask: async (id: string) => {
-    let krId: string | null = null;
     try {
-      // Get task krId before deleting
-      const tasks = await dataService.getTasks();
-      const taskToDelete = tasks.find(t => t.id === id);
-      krId = taskToDelete?.krId || null;
-      
       await apiRequest(`/tasks/${id}`, { method: 'DELETE' });
-      
-      // Sync OKR progress after task deletion
-      if (krId) {
-        await dataService.syncOKRProgress(krId);
-      }
       return true;
     } catch (err: any) {
       if (err.status === 401 || err.status === 403) throw err;
 
       const tasks = await dataService.getTasks();
-      const taskToDelete = tasks.find(t => t.id === id);
-      krId = taskToDelete?.krId || null;
-      
       const filtered = tasks.filter(t => t.id !== id);
       localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(filtered));
-      
-      // Sync OKR progress for local storage
-      if (krId) {
-        await dataService.syncOKRProgress(krId);
-      }
       return true;
     }
   },
@@ -292,7 +268,6 @@ export const dataService = {
       const okrs = await dataService.getOKRs();
       const tasks = await dataService.getTasks();
       
-      // Sync OKRs
       okrs.forEach((okr: any) => {
         let changed = false;
         okr.keyResults.forEach((kr: any) => {
@@ -309,22 +284,6 @@ export const dataService = {
         }
       });
       localStorage.setItem(STORAGE_KEYS.OKRS, JSON.stringify(okrs));
-      
-      // Try to sync MyOKRs if possible
-      try {
-        // Get current period from localStorage or assume current quarter
-        const now = new Date();
-        const currentQuarter = Math.ceil((now.getMonth() + 1) / 3);
-        const currentYear = now.getFullYear();
-        
-        const myOkrs = await myOkrService.getMyOKRs({ quarter: currentQuarter.toString(), year: currentYear });
-        // Note: Backend should handle MyOKRs progress update automatically
-      } catch (e) {
-        // Ignore MyOKRs sync errors
-      }
     }
-    
-    // Dispatch event to update UI
-    window.dispatchEvent(new CustomEvent('okrUpdated'));
   }
 };

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from '../services/departmentService';
 import { userService } from '../services/userService';
 import { getOKRs } from '../services/okrService';
+import { taskService } from '../services/taskService';
 import { useAuth } from '../context/AuthContext';
 
 export const Teams: React.FC = () => {
@@ -21,22 +22,26 @@ export const Teams: React.FC = () => {
 
   async function fetchDepartments() {
     try {
-      const [depts, users, okrs] = await Promise.all([
+      const [depts, users, okrs, tasks] = await Promise.all([
         getDepartments(),
         userService.getUsers(),
-        getOKRs()
+        getOKRs(),
+        taskService.getTasks()
       ]);
       const adapted = depts.map((d: any) => {
-        const deptUsers = users.filter((u: any) => u.department === d._id);
-        const deptOkrs = okrs.filter((o: any) => o.department === d._id);
-        const avgProgress = deptOkrs.length > 0 ? Math.round(deptOkrs.reduce((sum: number, o: any) => sum + o.progress, 0) / deptOkrs.length) : 0;
+        const deptUsers = users.filter((u: any) => u.department === d.name);
+        const deptOkrs = okrs.filter((o: any) => o.department === d.name);
+        const deptTasks = tasks.filter((t: any) => deptUsers.some((u: any) => u.id === t.assigneeId));
+        const deptTasksDone = deptTasks.filter((t: any) => t.status === 'DONE').length;
+        const progress = deptTasks.length > 0 ? Math.round((deptTasksDone / deptTasks.length) * 100) : 0;
         return {
           name: d.name,
           head: d.head || '—',
           members: deptUsers.length,
+          tasks: deptTasks.length,
           status: 'Active',
-          progress: avgProgress,
-          color: 'text-indigo-600',
+          progress: progress,
+          color: 'text-blue-600',
           id: d._id
         };
       });
@@ -57,9 +62,10 @@ export const Teams: React.FC = () => {
           name: dep.name,
           head: dep.head || '—',
           members: 0,
+          tasks: 0,
           status: 'Active',
           progress: 0,
-          color: 'text-indigo-600',
+          color: 'text-blue-600',
           id: dep._id
         };
         setDepartments(prev => prev.map(p => p.id === adapted.id ? adapted : p));
@@ -70,9 +76,10 @@ export const Teams: React.FC = () => {
           name: dep.name,
           head: dep.head || '—',
           members: 0,
+          tasks: 0,
           status: 'Active',
           progress: 0,
-          color: 'text-indigo-600',
+          color: 'text-blue-600',
           id: dep._id
         };
         setDepartments(prev => [adapted, ...prev]);
@@ -138,7 +145,7 @@ export const Teams: React.FC = () => {
           <div onClick={() => { setEditingDeptId(null); setForm({ name: '', head: '', description: '' }); setShowModal(true); }} className="cursor-pointer bg-white rounded-2xl border-dashed border-2 border-slate-200 hover:border-indigo-300 flex items-center justify-center p-8">
             <div className="text-center">
               <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto mb-2">
-                <span className="material-icons text-indigo-600">add</span>
+                <span className="material-icons text-blue-600">add</span>
               </div>
               <p className="font-bold text-slate-800">Thêm phòng ban</p>
               <p className="text-xs text-slate-400">Tạo phòng ban mới</p>
@@ -180,7 +187,7 @@ export const Teams: React.FC = () => {
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Dự án</p>
                   <div className="flex items-center space-x-2">
                     <span className="material-icons text-slate-400 text-base">rocket</span>
-                    <span className="text-lg font-bold text-slate-800">12 nhiệm vụ</span>
+                    <span className="text-lg font-bold text-slate-800">{dept.tasks} nhiệm vụ</span>
                   </div>
                 </div>
               </div>
@@ -192,7 +199,7 @@ export const Teams: React.FC = () => {
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div 
-                    className={`h-full bg-current ${dept.color.replace('text', 'bg')}`} 
+                    className={`h-full ${dept.color.replace('text', 'bg')}`} 
                     style={{ width: `${dept.progress}%` }}
                   ></div>
                 </div>
@@ -210,11 +217,11 @@ export const Teams: React.FC = () => {
               </div>
               {currentUser?.role === 'ADMIN' ? (
                 <div className="flex items-center space-x-2">
-                  <button onClick={() => handleEdit(dept)} className="text-indigo-600 text-sm font-bold hover:underline">Sửa</button>
+                  <button onClick={() => handleEdit(dept)} className="text-blue-600 text-sm font-bold hover:underline">Sửa</button>
                   <button onClick={() => handleDelete(dept.id)} disabled={deletingId === dept.id} className="text-rose-600 text-sm font-bold hover:underline">{deletingId === dept.id ? 'Đang xóa…' : 'Xóa'}</button>
                 </div>
               ) : (
-                <button className="text-indigo-600 text-sm font-bold hover:underline">Xem chi tiết</button>
+                <button className="text-blue-600 text-sm font-bold hover:underline">Xem chi tiết</button>
               )}
             </div>
           </div>
@@ -263,7 +270,7 @@ export const Teams: React.FC = () => {
               <div className="text-sm text-slate-500">{statusMessage}</div>
               <div className="flex justify-end space-x-2 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 font-bold text-sm">Hủy</button>
-                <button type="submit" disabled={isSubmitting} className={`px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-indigo-100 ${isSubmitting ? 'bg-slate-300 text-slate-700' : 'bg-indigo-600 text-white'}`}>
+                <button type="submit" disabled={isSubmitting} className={`px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-indigo-100 ${isSubmitting ? 'bg-slate-300 text-slate-700' : 'bg-blue-600 text-white'}`}>
                   {isSubmitting ? (editingDeptId ? 'Đang lưu…' : 'Đang tạo…') : (editingDeptId ? 'Lưu thay đổi' : 'Tạo phòng ban')}
                 </button>
               </div>

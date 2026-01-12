@@ -2,9 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-import { Objective, MyObjective } from '../types';
+import { Objective, MyObjective, Department } from '../types';
 import { dataService } from '../services/dataService';
 import { getMyOKRs } from '../services/myOkrService';
+import { getDepartments } from '../services/departmentService';
+import { userService } from '../services/userService';
+import { taskService } from '../services/taskService';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -12,16 +15,25 @@ export const Dashboard: React.FC = () => {
   const { selectedPeriod } = useAuth();
   const [okrs, setOkrs] = useState<Objective[]>([]);
   const [myOkrs, setMyOkrs] = useState<MyObjective[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
     setIsLoading(true);
-    const [d, myD] = await Promise.all([
+    const [d, myD, depts, usrs, tsks] = await Promise.all([
       dataService.getOKRs(),
-      getMyOKRs({ quarter: selectedPeriod.quarter, year: selectedPeriod.year })
+      getMyOKRs({ quarter: selectedPeriod.quarter, year: selectedPeriod.year }),
+      getDepartments(),
+      userService.getUsers(),
+      taskService.getTasks()
     ]);
     setOkrs(d);
     setMyOkrs(myD);
+    setDepartments(depts);
+    setUsers(usrs);
+    setTasks(tsks);
     setIsLoading(false);
   };
 
@@ -43,11 +55,12 @@ export const Dashboard: React.FC = () => {
     ? Math.round(filteredMyOkrs.reduce((acc, curr) => acc + (curr.keyResults.reduce((sum, kr) => sum + kr.progress, 0) / curr.keyResults.length || 0), 0) / filteredMyOkrs.length)
     : 0;
 
-  const depts = Array.from(new Set(filteredOkrs.map(o => o.department)));
-  const deptData = depts.map(d => {
-    const deptOkrs = filteredOkrs.filter(o => o.department === d);
-    const progress = Math.round(deptOkrs.reduce((acc, curr) => acc + curr.progress, 0) / (deptOkrs.length || 1));
-    return { name: d, progress };
+  const deptData = departments.map(d => {
+    const deptUsers = users.filter((u: any) => u.department === d.name);
+    const deptTasks = tasks.filter((t: any) => deptUsers.some((u: any) => u.id === t.assigneeId));
+    const deptTasksDone = deptTasks.filter((t: any) => t.status === 'DONE').length;
+    const progress = deptTasks.length > 0 ? Math.round((deptTasksDone / deptTasks.length) * 100) : 0;
+    return { name: d.name, progress };
   });
 
   const stats = [
@@ -55,7 +68,7 @@ export const Dashboard: React.FC = () => {
     { label: 'Key Results', value: filteredOkrs.reduce((acc, curr) => acc + (curr.keyResults?.length || 0), 0).toString(), icon: 'checklist', color: 'bg-emerald-500' },
     { label: 'Tiến độ trung bình', value: `${avgProgress}%`, icon: 'trending_up', color: 'bg-amber-500' },
     { label: 'Kỳ báo cáo', value: selectedPeriod.quarter + ' ' + selectedPeriod.year, icon: 'calendar_today', color: 'bg-rose-500' },
-    { label: 'My OKRs', value: filteredMyOkrs.length.toString(), icon: 'person', color: 'bg-purple-500' },
+    { label: 'OKRs cá nhân', value: filteredMyOkrs.length.toString(), icon: 'person', color: 'bg-purple-500' },
     { label: 'Tiến độ cá nhân', value: `${myAvgProgress}%`, icon: 'account_circle', color: 'bg-cyan-500' },
   ];
 
@@ -91,7 +104,7 @@ export const Dashboard: React.FC = () => {
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <h3 className="text-lg font-bold mb-6 flex items-center">
           <span className="material-icons mr-2 text-purple-600">person</span>
-          Mục tiêu cá nhân của tôi
+          Mục tiêu cá nhân
         </h3>
         <div className="space-y-4">
           {filteredMyOkrs.length > 0 ? (

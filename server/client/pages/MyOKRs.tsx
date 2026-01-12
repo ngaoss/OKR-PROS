@@ -213,7 +213,7 @@ export const MyOKRs: React.FC = () => {
                   <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <p className="text-xs font-bold truncate">{kr.title}</p>
                     <div className="flex justify-between text-[10px] mt-1">
-                      <span>{kr.progress >= 100 ? kr.targetValue : kr.currentValue}/{kr.targetValue} {kr.unit}</span>
+                      <span>{kr.currentValue}/{kr.targetValue} {kr.unit}</span>
                       <span className="font-bold">{kr.progress || 0}%</span>
                     </div>
                     <div className="h-1 bg-slate-200 rounded-full mt-1 overflow-hidden">

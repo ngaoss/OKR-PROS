@@ -77,9 +77,14 @@ export const PersonalKPIs: React.FC = () => {
     const loadUsers = async () => {
         try {
             const data = await userService.getUsers();
-            // Filter users in same department
-            const filtered = data.filter((u: User) => u.department === user?.department && u.role === 'EMPLOYEE');
-            setUsers(filtered);
+            if (user?.role === 'ADMIN') {
+                // Admin thấy tất cả nhân viên và manager
+                setUsers(data.filter((u: User) => u.id !== user.id));
+            } else if (user?.role === 'MANAGER') {
+                // Manager lọc theo phòng ban của họ
+                const filtered = data.filter((u: User) => u.department === user?.department && u.id !== user.id);
+                setUsers(filtered);
+            }
         } catch (err) {
             console.error('Failed to load users', err);
         }
