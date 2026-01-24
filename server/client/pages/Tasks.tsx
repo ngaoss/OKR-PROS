@@ -65,7 +65,19 @@ export const Tasks: React.FC = () => {
       // Fallback - không hiển thị lỗi nếu không lấy được myOKRs
     }
     
-    setTasks(t);
+    // Filter tasks: EMPLOYEE chỉ xem task của bản thân, MANAGER xem task của phòng ban
+    let filteredTasks = t;
+    if (user?.role === 'EMPLOYEE') {
+      const userId = user?.id || user?._id;
+      filteredTasks = t.filter((task: Task) => task.assigneeId === userId);
+    } else if (user?.role === 'MANAGER') {
+      const deptName = user?.department;
+      const deptUsers = allUsers.filter((u: any) => u.department === deptName);
+      const deptUserIds = deptUsers.map((u: any) => u.id || u._id);
+      filteredTasks = t.filter((task: Task) => deptUserIds.includes(task.assigneeId));
+    }
+    
+    setTasks(filteredTasks);
     setOkrs(o);
     setMyOkrs(m);
     setIsLoading(false);

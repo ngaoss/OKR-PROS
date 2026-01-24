@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { userService } from '../services/userService';
-import { getDepartments } from '../services/departmentService';
+import { getDepartments, syncDepartmentHeads } from '../services/departmentService';
 
 // Helper an toàn để lấy ID
 const getUserId = (user: any): string => user?.id || user?._id || '';
@@ -122,12 +122,22 @@ export const Users: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      let updatedUser;
       if (editingUserId) {
+        // Nếu đang edit, tách password riêng
         const payload: any = { ...formData };
-        if (!payload.password) delete payload.password;
+        const newPassword = payload.password;
+        delete payload.password;
         delete payload.id;
         delete payload._id;
-        await userService.updateUser(editingUserId, payload);
+        
+        // Cập nhật thông tin chung
+        updatedUser = await userService.updateUser(editingUserId, payload);
+        
+        // Nếu có mật khẩu mới, cập nhật mật khẩu qua endpoint riêng
+        if (newPassword) {
+          await userService.changePassword(editingUserId, newPassword);
+        }
       } else {
         if (!formData.password) { alert("Vui lòng nhập mật khẩu."); setIsSubmitting(false); return; }
         if (!formData.department) { alert("Vui lòng chọn phòng ban."); setIsSubmitting(false); return; }
@@ -136,8 +146,24 @@ export const Users: React.FC = () => {
           ...formData,
           supervisorId: currentUser?.role === 'MANAGER' && formData.role === 'EMPLOYEE' ? currentUser.id : undefined
         };
-        await userService.createUser(newUserPayload);
+        updatedUser = await userService.createUser(newUserPayload);
       }
+      
+      // Sync department heads if user has MANAGER role
+      if (updatedUser && updatedUser.role === 'MANAGER' && formData.department) {
+        const dept = departments.find(d => d.name === formData.department);
+        console.log('Syncing heads for manager:', { updatedUser, formData, dept });
+        if (dept && dept._id) {
+          try {
+            console.log('Calling syncDepartmentHeads with dept ID:', dept._id);
+            await syncDepartmentHeads(dept._id);
+            console.log('Sync heads success');
+          } catch (err) {
+            console.error('Error syncing department heads', err);
+          }
+        }
+      }
+      
       await refreshUsers();
       setShowModal(false);
       resetForm();
@@ -153,7 +179,21 @@ export const Users: React.FC = () => {
     const targetId = getUserId(u);
     setDeletingId(targetId);
     try {
+      // If deleting a manager, sync the department after deletion
+      const deptName = u.department;
+      const dept = departments.find(d => d.name === deptName);
+      
       await userService.deleteUser(targetId);
+      
+      // Sync department heads if this was a manager
+      if (u.role === 'MANAGER' && dept && dept._id) {
+        try {
+          await syncDepartmentHeads(dept._id);
+        } catch (err) {
+          console.error('Error syncing department heads', err);
+        }
+      }
+      
       await refreshUsers();
     } catch (err: any) {
       alert(err?.message || 'Xóa thất bại');
@@ -347,9 +387,10 @@ export const Users: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">{editingUserId ? 'Mật khẩu mới' : 'Mật khẩu'} <span className="text-red-500">*</span></label>
-                <input type="password" required={!editingUserId} placeholder="••••••••" className="w-full p-2 border border-slate-200 rounded outline-none focus:border-indigo-500 mt-1 text-sm"
+                <label className="text-xs font-bold text-slate-500 uppercase">{editingUserId ? 'Mật khẩu mới' : 'Mật khẩu'} <span className="text-red-500">{editingUserId ? '' : '*'}</span></label>
+                <input type="password" required={!editingUserId} placeholder={editingUserId ? '(để trống nếu không thay đổi)' : '••••••••'} className="w-full p-2 border border-slate-200 rounded outline-none focus:border-indigo-500 mt-1 text-sm"
                   value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                {editingUserId && <p className="text-xs text-slate-400 mt-1">💡 Để trống nếu không muốn đổi mật khẩu</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

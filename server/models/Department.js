@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const DepartmentSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
-  head: { type: String }, // user id or name
+  heads: { type: [String], default: [] }, // array of manager user IDs
   description: { type: String },
   createdBy: { type: String },
 }, { timestamps: true });
