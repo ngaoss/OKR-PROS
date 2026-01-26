@@ -75,10 +75,18 @@ export const Users: React.FC = () => {
       );
     }
 
+    // Bước 3: Sắp xếp theo role (ADMIN luôn nằm trên đầu)
+    accessibleUsers.sort((a, b) => {
+      const roleOrder = { 'ADMIN': 0, 'MANAGER': 1, 'EMPLOYEE': 2 };
+      const orderA = roleOrder[a.role as keyof typeof roleOrder] ?? 3;
+      const orderB = roleOrder[b.role as keyof typeof roleOrder] ?? 3;
+      return orderA - orderB;
+    });
+
     return accessibleUsers;
   }, [allUsers, currentUser, searchTerm]);
 
-  // 4. Logic Phân nhóm theo Phòng ban
+  // 4. Logic Phân nhóm theo Phòng ban (ADMIN luôn trên đầu)
   const groupedUsers = useMemo(() => {
     const groups: { [key: string]: any[] } = {};
     
@@ -90,8 +98,21 @@ export const Users: React.FC = () => {
       groups[deptName].push(u);
     });
 
-    // Sắp xếp thứ tự các phòng ban (nếu cần)
-    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    // Chuyển đổi thành entries và sắp xếp
+    let entries = Object.entries(groups);
+    
+    // Tìm phòng ban có ADMIN và đưa lên đầu
+    entries.sort((a, b) => {
+      const aHasAdmin = a[1].some(u => u.role === 'ADMIN');
+      const bHasAdmin = b[1].some(u => u.role === 'ADMIN');
+      
+      if (aHasAdmin && !bHasAdmin) return -1;
+      if (!aHasAdmin && bHasAdmin) return 1;
+      
+      return a[0].localeCompare(b[0]);
+    });
+
+    return entries;
   }, [processedUsers]);
 
   // --- Các hàm xử lý Form (Giữ nguyên logic cũ) ---
@@ -320,10 +341,10 @@ export const Users: React.FC = () => {
                               </td>
                               <td className="px-6 py-4">
                                 <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${
-                                  u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700 border-purple-200' : 
+                                  u.role === 'ADMIN' ? 'bg-red-100 text-red-700 border-red-200' : 
                                   u.role === 'MANAGER' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'
                                 }`}>
-                                  {u.role}
+                                  {u.role === 'ADMIN' ? 'Quản trị viên' : u.role === 'MANAGER' ? 'Quản lý' : u.role === 'EMPLOYEE' ? 'Nhân viên' : u.role}
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-500">
