@@ -55,17 +55,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const init = () => {
-      const savedUser = localStorage.getItem('okr_session_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+    const init = async () => {
+      try {
+        const savedUser = localStorage.getItem('okr_session_user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+        
+        const savedPeriod = localStorage.getItem('okr_selected_period');
+        if (savedPeriod) setSelectedPeriod(JSON.parse(savedPeriod));
+        
+        // Chỉ gọi refreshUsers() khi user đã có token (đã login)
+        const token = localStorage.getItem('okr_auth_token');
+        if (token) {
+          await refreshUsers();
+        }
+      } catch (err) {
+        console.error('Auth init error:', err);
+      } finally {
+        setIsLoading(false);
       }
-      
-      const savedPeriod = localStorage.getItem('okr_selected_period');
-      if (savedPeriod) setSelectedPeriod(JSON.parse(savedPeriod));
-      
-      refreshUsers();
-      setIsLoading(false);
     };
     init();
   }, []);
